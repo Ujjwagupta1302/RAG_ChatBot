@@ -102,21 +102,26 @@ def load_url_to_db():
                 st.error("Maximum document limit reached.")
 
 
-def _split_and_load_docs(docs):
-    splitter = RecursiveCharacterTextSplitter(chunk_size=5000, chunk_overlap=1000)
-    chunks = splitter.split_documents(docs)
+def _split_and_load_docs(documents):
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len
+    )
+
+    splits = text_splitter.split_documents(documents)
 
     if "vector_db" not in st.session_state:
-        st.session_state.vector_db = initialize_vector_db(chunks)
+        st.session_state.vector_db = initialize_vector_db(splits)
     else:
-        st.session_state.vector_db.add_documents(chunks)
+        st.session_state.vector_db.add_documents(splits)
 
 
-def initialize_vector_db(docs):
-    embedding = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+def initialize_vector_db(documents):
+    embedding_function = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
     vector_db = Chroma.from_documents(
-        documents=docs,
-        embedding=embedding,
+        documents=documents,
+        embedding=embedding_function,
         collection_name=f"{str(time()).replace('.', '')[:14]}_" + st.session_state['session_id']
     )
 
@@ -130,25 +135,47 @@ def initialize_vector_db(docs):
     return vector_db
 
 
-def _get_context_retriever_chain(vector_db, llm):
-    retriever = vector_db.as_retriever()
-    prompt = ChatPromptTemplate.from_messages([
-        MessagesPlaceholder(variable_name="messages"),
-        ("user", "{input}"),
-        ("user", "Generate a search query to find information based on this conversation.")
-    ])
-    return create_history_aware_retriever(llm, retriever, prompt)
+def _get_context_retriever_chain(vector_db, llm) :
+    retriever = vector_db.as_retriever(search_kwargs={"k": 2})
+    contextualize_q_system_prompt = """
+        Given a chat history and the latest user question
+        which might reference context in the chat history,
+        formulate a standalone question which can be understood
+        without the chat history. Do NOT answer the question,
+        just reformulate it if needed and otherwise return it as is.
+        Do not consider the question if it is not present in the context which is provided to you. 
+    """
+
+    contextualize_q_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", contextualize_q_system_prompt),
+            MessagesPlaceholder("chat_history"),
+            ("human", "{input}"),
+        ]
+    )
 
 
-def get_conversational_rag_chain(llm):
+    history_aware_retriever = create_history_aware_retriever(
+        llm, retriever, contextualize_q_prompt
+    )
+
+
+    return history_aware_retriever
+
+
+def get_conversational_rag_chain(llm) :
     retriever_chain = _get_context_retriever_chain(st.session_state.vector_db, llm)
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a helpful assistant. Use the context and your knowledge to answer user queries.\n{context}"""),
-        MessagesPlaceholder(variable_name="messages"),
-        ("user", "{input}")
+    qa_prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are a helpful AI assistant. Use only the following context to answer the user's question. If you cannot find the answer from the given context, say 'Sorry, not available'"),
+        ("system", "Context: {context}"),
+        MessagesPlaceholder(variable_name="chat_history"),
+        ("human", "{input}")
     ])
-    stuff_documents_chain = create_stuff_documents_chain(llm, prompt)
-    return create_retrieval_chain(retriever_chain, stuff_documents_chain)
+
+    question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
+    rag_chain = create_retrieval_chain(retriever_chain, question_answer_chain)
+
+    return rag_chain
 
 
 def stream_llm_rag_response(llm_stream, messages):
