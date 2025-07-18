@@ -2,6 +2,12 @@
 
 This project presents a Retrieval Augmented Generation (RAG) powered chatbot application designed to provide contextual answers based on user-provided documents and web content. Built with a focus on conversational fluidity and information retrieval, this chatbot leverages the power of Large Language Models (LLMs) and vector databases to deliver accurate and relevant responses.
 
+
+## 📺 Video Demonstration
+
+Check out a quick demonstration of the RAG Chatbot Application in action:   
+[![Video Demo Thumbnail](Video_demo/Thumbnail.png)](https://www.youtube.com/watch?v=am76_h_ztEk "Watch the Video Demo")
+
 ## ✨ Features
 
 * **Multi-Document Support**: Upload up to 5 documents (e.g., PDF, TXT) and enable the chatbot to converse based on their content.
