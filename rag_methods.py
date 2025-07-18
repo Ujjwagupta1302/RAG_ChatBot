@@ -25,7 +25,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 load_dotenv()
 
 # Constants
-DB_DOCS_LIMIT = 10
+DB_DOCS_LIMIT = 5
 os.environ["USER_AGENT"] = "myagent"
 
 # Load Gemini Flash Model

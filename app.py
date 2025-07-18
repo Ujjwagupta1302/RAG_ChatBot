@@ -122,7 +122,7 @@ else:
             
         # File upload input for RAG with documents
         st.file_uploader(
-            "📄 Upload a document", 
+            "📄 Upload a document (Upto 5)", 
             type=["pdf", "txt", "docx", "md"],
             accept_multiple_files=True,
             on_change=load_doc_to_db,
