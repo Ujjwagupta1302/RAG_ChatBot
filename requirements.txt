@@ -1,0 +1,11 @@
+langchain-text-splitters 
+langchain-community 
+langgraph
+langchain-chroma
+sentence_transformers
+pypdf
+python-dotenv
+langchain-google-genai
+ipykernel
+streamlit
+docx2txt
